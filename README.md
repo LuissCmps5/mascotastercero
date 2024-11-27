@@ -90,3 +90,53 @@ Future<void> _login() async {
     print('Error de autenticación: $error');
   }
 }
+```
+
+### **Main Functionality:**
+Initializes the application and connects it to Supabase.
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://example.supabase.co',
+    anonKey: 'your-anon-key',
+  );
+
+  runApp(MyApp());
+}
+```
+### **CRUD for Pets:**
+```dart
+// Example: Adding a new pet
+Future addPet() async {
+  final response = await Supabase.instance.client.from('pets').insert({
+    'name': _nameController.text,
+    'species': _speciesController.text,
+    'breed': _breedController.text,
+    'age': _ageController.text,
+    'features': _featuresController.text,
+  }).execute();
+
+  if (response.error == null) {
+    fetchPets();
+    clearInputs();
+  }
+}
+```
+
+### **Pet Filtering:**
+```dart
+String filter = "";
+final filteredPets = pets.where((pet) {
+  return pet['name'].toLowerCase().contains(filter.toLowerCase()) ||
+         pet['species'].toLowerCase().contains(filter.toLowerCase());
+}).toList();
+```
+
+### **Conclusion:**
+Developing the Pet Tracker application brought several challenges, including:
+
+Role Management: Differentiating functionality for users and administrators required careful planning.
+Supabase Integration: Learning Supabase for authentication and database operations was critical.
+UI Design: Ensuring the interface was intuitive for users to easily manage their pets.
+The result is a robust and scalable application that addresses the needs of pet owners and administrators. With features like role-based access, CRUD operations, and filtering, the Pet Tracker app provides a comprehensive solution for pet care management.
