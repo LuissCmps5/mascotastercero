@@ -1,219 +1,275 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class CrudPage extends StatefulWidget {
-  CrudPage({super.key});
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-  @override
-  _CrudPageState createState() => _CrudPageState();
+  await Supabase.initialize(
+    url: 'https://tviyvxjwaxdzcibdxzwm.supabase.co',  // Reemplaza con tu URL de Supabase
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2aXl2eGp3YXhkemNpYmR4endtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE1MTA0MDYsImV4cCI6MjA0NzA4NjQwNn0.v7P5Mi7cctbMg8jZADp_inqewb7-RnYDLRNRnr0S7UI',  // Reemplaza con tu anon key de Supabase
+  );
+
+  runApp(MyApp());
 }
 
-class _CrudPageState extends State<CrudPage> {
-  List<Pet> pets = [];
-  TextEditingController nameController = TextEditingController();
-  TextEditingController breedController = TextEditingController();
-  TextEditingController furController = TextEditingController();
-  TextEditingController specialMarkController = TextEditingController();
-  TextEditingController photoUrlController = TextEditingController();
-  DateTime? selectedBirthDate;
-  int? selectedIndex;
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'CRUD Example',
+      home: HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late Future<List<dynamic>> _itemsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _itemsFuture = getItems();
+  }
+
+  Future<void> createItem(String name, String description) async {
+    final response = await Supabase.instance.client
+        .from('items')
+        .insert({
+          'name': name,
+          'description': description,
+        })
+        .select();
+    
+    if (response != 200) {
+      print('Item created successfully');
+      setState(() {
+        _itemsFuture = getItems();
+      });
+    } else {
+      print('Error creating item: ${response}');
+    }
+  }
+
+  Future<List<dynamic>> getItems() async {
+    final response = await Supabase.instance.client
+        .from('items')
+        .select()
+        .select();
+
+    if (response != 200) {
+      return response as List<dynamic>;
+    } else {
+      print('Error fetching items: ${response}');
+      return [];
+    }
+  }
+
+  Future<void> updateItem(int id, String name, String description) async {
+    final response = await Supabase.instance.client
+        .from('items')
+        .update({
+          'name': name,
+          'description': description,
+        })
+        .eq('id', id)
+        .select();
+    
+    if (response != 200) {
+      print('Item updated successfully');
+      setState(() {
+        _itemsFuture = getItems();
+      });
+    } else {
+      print('Error updating item: ${response}');
+    }
+  }
+
+  Future<void> deleteItem(int id) async {
+    final response = await Supabase.instance.client
+        .from('items')
+        .delete()
+        .eq('id', id)
+        .select();
+    
+    if (response != 200) {
+      print('Item deleted successfully');
+      setState(() {
+        _itemsFuture = getItems();
+      });
+    } else {
+      print('Error deleting item: ${response}');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('CRUD de Mascotas'),
+        title: const Text('CRUD Example'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              setState(() {
+                _itemsFuture = getItems();
+              });
+            },
+          ),
+        ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: TextField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: 'Nombre de la mascota'),
+      body: FutureBuilder(
+        future: _itemsFuture,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final items = snapshot.data as List<dynamic>;
+          return ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return ListTile(
+                title: Text(item['name']),
+                subtitle: Text(item['description']),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () {
+                        _showEditDialog(item['id'], item['name'], item['description']);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () {
+                        _showDeleteConfirmationDialog(item['id']);
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _showCreateDialog();
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _showCreateDialog() {
+    final _nameController = TextEditingController();
+    final _descriptionController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Item'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: TextField(
-              controller: breedController,
-              decoration: InputDecoration(labelText: 'Raza'),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
             ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
           ),
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: TextField(
-              controller: furController,
-              decoration: InputDecoration(labelText: 'Tipo de pelo'),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: TextField(
-              controller: specialMarkController,
-              decoration: InputDecoration(labelText: 'Seña Particular'),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: TextField(
-              controller: photoUrlController,
-              decoration: InputDecoration(labelText: 'URL de la foto'),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () async {
-                DateTime? pickedDate = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (pickedDate != null) {
-                  setState(() {
-                    selectedBirthDate = pickedDate;
-                  });
-                }
-              },
-              child: Text(
-                selectedBirthDate == null
-                    ? 'Seleccione la fecha de nacimiento'
-                    : '${selectedBirthDate!.day}/${selectedBirthDate!.month}/${selectedBirthDate!.year}',
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              ElevatedButton(
-                onPressed: () {
-                  if (validateInput()) {
-                    setState(() {
-                      pets.add(Pet(
-                        name: nameController.text,
-                        breed: breedController.text,
-                        fur: furController.text,
-                        specialMark: specialMarkController.text,
-                        birthDate: selectedBirthDate!,
-                        photoUrl: photoUrlController.text,
-                        vaccines: [],
-                      ));
-                      clearFields();
-                    });
-                  }
-                },
-                child: Text('Crear'),
-              ),
-              SizedBox(width: 16.0),
-              ElevatedButton(
-                onPressed: () {
-                  if (validateInput() && selectedIndex != null) {
-                    setState(() {
-                      pets[selectedIndex!] = Pet(
-                        name: nameController.text,
-                        breed: breedController.text,
-                        fur: furController.text,
-                        specialMark: specialMarkController.text,
-                        birthDate: selectedBirthDate!,
-                        photoUrl: photoUrlController.text,
-                        vaccines: pets[selectedIndex!].vaccines,
-                      );
-                      clearFields();
-                    });
-                  }
-                },
-                child: Text('Actualizar'),
-              ),
-              SizedBox(width: 16.0),
-              ElevatedButton(
-                onPressed: () {
-                  if (selectedIndex != null) {
-                    setState(() {
-                      pets.removeAt(selectedIndex!);
-                      clearFields();
-                    });
-                  }
-                },
-                child: Text('Eliminar'),
-              ),
-            ],
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: pets.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(pets[index].name),
-                  subtitle: Text(
-                    'Raza: ${pets[index].breed}, Pelo: ${pets[index].fur}, Nacimiento: ${pets[index].birthDate.day}/${pets[index].birthDate.month}/${pets[index].birthDate.year}',
-                  ),
-                  onTap: () {
-                    setState(() {
-                      nameController.text = pets[index].name;
-                      breedController.text = pets[index].breed;
-                      furController.text = pets[index].fur;
-                      specialMarkController.text = pets[index].specialMark;
-                      photoUrlController.text = pets[index].photoUrl;
-                      selectedBirthDate = pets[index].birthDate;
-                      selectedIndex = index;
-                    });
-                  },
-                );
-              },
-            ),
+          TextButton(
+            onPressed: () async {
+              _itemsFuture = getItems();
+              await createItem(_nameController.text, _descriptionController.text);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Create'),
           ),
         ],
       ),
     );
   }
 
-  bool validateInput() {
-    return nameController.text.isNotEmpty &&
-        breedController.text.isNotEmpty &&
-        furController.text.isNotEmpty &&
-        specialMarkController.text.isNotEmpty &&
-        photoUrlController.text.isNotEmpty &&
-        selectedBirthDate != null;
+  void _showEditDialog(int id, String name, String description) {
+    final _nameController = TextEditingController(text: name);
+    final _descriptionController = TextEditingController(text: description);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Item'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await updateItem(id, _nameController.text, _descriptionController.text);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void clearFields() {
-    nameController.clear();
-    breedController.clear();
-    furController.clear();
-    specialMarkController.clear();
-    photoUrlController.clear();
-    selectedBirthDate = null;
-    selectedIndex = null;
+  void _showDeleteConfirmationDialog(int id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Confirmation'),
+        content: const Text('Are you sure you want to delete this item?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await deleteItem(id);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
-}
-
-class Pet {
-  String name;
-  String breed;
-  String fur;
-  String specialMark;
-  DateTime birthDate;
-  String photoUrl;
-  List<Vaccine> vaccines;
-
-  Pet({
-    required this.name,
-    required this.breed,
-    required this.fur,
-    required this.specialMark,
-    required this.birthDate,
-    required this.photoUrl,
-    required this.vaccines,
-  });
-}
-
-class Vaccine {
-  String name;
-  DateTime date;
-
-  Vaccine({
-    required this.name,
-    required this.date,
-  });
 }
