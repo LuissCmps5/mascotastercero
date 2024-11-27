@@ -109,7 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _photoUrlController = TextEditingController();
   DateTime? _birthDate;
 
-  final List<Map<String, dynamic>> _pets = [];
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +167,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   SizedBox(height: 16.0),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (widget.action == 'add') {
                         // Agregar mascota
                         if (_nameController.text.isNotEmpty &&
@@ -176,18 +176,23 @@ class _MyHomePageState extends State<MyHomePage> {
                             _specialMarkController.text.isNotEmpty &&
                             _photoUrlController.text.isNotEmpty &&
                             _birthDate != null) {
-                          setState(() {
-                            _pets.add({
-                              'name': _nameController.text,
-                              'breed': _breedController.text,
-                              'fur': _furController.text,
-                              'specialMark': _specialMarkController.text,
-                              'birthDate': _birthDate,
-                              'photoUrl': _photoUrlController.text,
-                            });
-                            _clearFields();
-                          });
+                          await _supabase.from('pets').insert({
+                            'name': _nameController.text,
+                            'breed': _breedController.text,
+                            'fur': _furController.text,
+                            'special_mark': _specialMarkController.text,
+                            'birth_date': _birthDate!.toIso8601String(),
+                            'photo_url': _photoUrlController.text,
+                          }).select();
+                          _clearFields();
+                          Navigator.pop(context);
                         }
+                      } else if (widget.action == 'edit') {
+                        // Editar mascota
+                        // Implementar edición de mascota aquí
+                      } else if (widget.action == 'delete') {
+                        // Borrar mascota
+                        // Implementar borrado de mascota aquí
                       }
                     },
                     child: Text(widget.action == 'add' ? 'Guardar' : 'Actualizar'),
@@ -196,16 +201,30 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             if (widget.action == 'view')
               Expanded(
-                child: ListView.builder(
-                  itemCount: _pets.length,
-                  itemBuilder: (context, index) {
-                    final pet = _pets[index];
-                    return ListTile(
-                      leading: Image.network(pet['photoUrl']),
-                      title: Text(pet['name']),
-                      subtitle: Text(
-                          'Raza: ${pet['breed']}, Fecha de nacimiento: ${pet['birthDate']?.day}/${pet['birthDate']?.month}/${pet['birthDate']?.year}'),
-                    );
+                child: FutureBuilder(
+                  future: _supabase.from('pets').select().select(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (!snapshot.hasData || snapshot.data == null) {
+                      return Center(child: Text('No hay mascotas registradas.'));
+                    } else {
+                      final pets = snapshot.data as List<dynamic>;
+                      return ListView.builder(
+                        itemCount: pets.length,
+                        itemBuilder: (context, index) {
+                          final pet = pets[index];
+                          return ListTile(
+                            leading: Image.network(pet['photo_url']),
+                            title: Text(pet['name']),
+                            subtitle: Text(
+                                'Raza: ${pet['breed']}, Fecha de nacimiento: ${pet['birth_date']}'),
+                          );
+                        },
+                      );
+                    }
                   },
                 ),
               ),
