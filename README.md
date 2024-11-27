@@ -9,7 +9,7 @@
 
 ## Introduction
 
-The Pet Tracker application is designed to help pet owners monitor and manage the care of their pets. Users can register pets, view relevant information, and track activities such as vaccinations, medical appointments, and feeding schedules. 
+The Pet Tracker application, is designed to help pet owners monitor and manage the care of their pets. Users can register pets, view relevant information, and track activities such as vaccinations, medical appointments, and feeding schedules.
 
 The application features authentication using Supabase, with two types of roles:
 
