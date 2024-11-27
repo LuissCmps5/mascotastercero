@@ -1,6 +1,6 @@
 # Pet Tracker Application
 
-**Your Name:** Luis Enrique Campos Ontiveros, Diego Llamas Alcantar  
+**Your Name:** Luis Enrique Campos Ontiveros 
 **Course:** Mobile Applications 2  
 **Submission Date:** October 28, 2024  
 **Instructor's Name:** Carlos Alberto Iriarte Martinez  
